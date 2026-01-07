@@ -3,7 +3,7 @@ description: A Dart library for RTMP (Real-Time Messaging Protocol).
 version: 0.0.1
 repository: https://github.com/kikuchy/rtmp
 
-platform:
+platforms:
   - windows
   - linux
   - macos

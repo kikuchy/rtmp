@@ -17,7 +17,7 @@ A pure Dart library for RTMP (Real-Time Messaging Protocol).
 
 YouTube Live from [rtmp_publishing_example.dart](https://github.com/kikuchy/rtmp/blob/main/example/rtmp_publishing_example.dart)
 
-![Screenshot](docs/assets/screenshot.png)
+![Screenshot](doc/assets/screenshot.png)
 
 ## Getting started
 
