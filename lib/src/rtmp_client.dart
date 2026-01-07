@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'handshake/handshake.dart';
 import 'chunk/chunk_handler.dart';
 import 'chunk/models.dart';
+import 'package:rtmp/src/utils/constants.dart';
 import 'protocol/protocol.dart';
 
 class RtmpClient {
@@ -131,8 +132,11 @@ class RtmpStream {
   /// Sends H.264 AVCDecoderConfigurationRecord (SPS/PPS).
   void sendH264SequenceHeader(Uint8List avcC) {
     final payload = BytesBuilder();
-    payload.addByte(0x17); // Keyframe (0x10) | CodecID 7 (0x07)
-    payload.addByte(0x00); // AVCPacketType (0: sequence header)
+    payload.addByte(
+      (RtmpConstants.flvVideoFrameTypeKeyframe << 4) |
+          RtmpConstants.flvVideoCodecIdAvc,
+    );
+    payload.addByte(RtmpConstants.avcPacketTypeSequenceHeader);
     payload.addByte(0x00); // CompositionTime
     payload.addByte(0x00);
     payload.addByte(0x00);
@@ -148,8 +152,11 @@ class RtmpStream {
     bool isKeyframe = false,
   }) {
     final payload = BytesBuilder();
-    payload.addByte(isKeyframe ? 0x17 : 0x27); // Keyframe or Interframe
-    payload.addByte(0x01); // AVCPacketType (1: NALU)
+    final frameType = isKeyframe
+        ? RtmpConstants.flvVideoFrameTypeKeyframe
+        : RtmpConstants.flvVideoFrameTypeInter;
+    payload.addByte((frameType << 4) | RtmpConstants.flvVideoCodecIdAvc);
+    payload.addByte(RtmpConstants.avcPacketTypeNalu);
     payload.addByte(0x00); // CompositionTime
     payload.addByte(0x00);
     payload.addByte(0x00);
@@ -163,9 +170,13 @@ class RtmpStream {
     final payload = BytesBuilder();
     // AudioTagHeader:
     // Format 10 (AAC) << 4 | Rate 3 (44kHz) << 2 | Size 1 (16 bit) << 1 | Type 1 (Stereo)
-    // 0xAF is the standard for AAC
-    payload.addByte(0xAF);
-    payload.addByte(0x00); // AACPacketType (0: sequence header)
+    const audioHeader =
+        (RtmpConstants.flvAudioFormatAac << 4) |
+        (RtmpConstants.flvAudioRate44kHz << 2) |
+        (RtmpConstants.flvAudioSize16Bit << 1) |
+        RtmpConstants.flvAudioTypeStereo;
+    payload.addByte(audioHeader);
+    payload.addByte(RtmpConstants.aacPacketTypeSequenceHeader);
     payload.add(config);
 
     sendAudio(payload.toBytes(), 0);
@@ -174,8 +185,13 @@ class RtmpStream {
   /// Sends AAC NALU sample.
   void sendAACSample(Uint8List data, int timestamp) {
     final payload = BytesBuilder();
-    payload.addByte(0xAF);
-    payload.addByte(0x01); // AACPacketType (1: raw)
+    const audioHeader =
+        (RtmpConstants.flvAudioFormatAac << 4) |
+        (RtmpConstants.flvAudioRate44kHz << 2) |
+        (RtmpConstants.flvAudioSize16Bit << 1) |
+        RtmpConstants.flvAudioTypeStereo;
+    payload.addByte(audioHeader);
+    payload.addByte(RtmpConstants.aacPacketTypeRaw);
     payload.add(data);
 
     sendAudio(payload.toBytes(), timestamp);

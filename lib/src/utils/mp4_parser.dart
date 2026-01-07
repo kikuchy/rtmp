@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:rtmp/src/utils/constants.dart';
 
 class Mp4Parser {
   final RandomAccessFile _file;
@@ -174,13 +175,13 @@ class Mp4Track {
               return d.sublist(p, p + len);
             }
 
-            if (tag == 0x03) {
+            if (tag == Mp4DescriptorTags.esDescriptor) {
               // ES_Descriptor
               if (p + 3 > d.length) return null;
               p += 3; // Skip 2 bytes (id) + 1 byte (flags)
               final sub = findDescriptor(d.sublist(p, p + len - 3), targetTag);
               if (sub != null) return sub;
-            } else if (tag == 0x04) {
+            } else if (tag == Mp4DescriptorTags.decoderConfigDescriptor) {
               // DecoderConfigDescriptor
               if (p + 13 > d.length) return null;
               p += 13; // Skip 13 bytes of fixed header
@@ -192,7 +193,10 @@ class Mp4Track {
           return null;
         }
 
-        final config = findDescriptor(boxData.sublist(pos), 0x05);
+        final config = findDescriptor(
+          boxData.sublist(pos),
+          Mp4DescriptorTags.decoderSpecificInfo,
+        );
         if (config != null) return config;
       }
     }

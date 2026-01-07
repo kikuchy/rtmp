@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import '../amf/amf.dart';
+import '../utils/constants.dart';
 import '../chunk/chunk_handler.dart';
 import '../chunk/models.dart';
 
@@ -20,10 +21,27 @@ class RtmpProtocol {
       'flashVer': 'FMLE/3.0 (compatible; Antigravity)',
       'tcUrl': tcUrl ?? 'rtmp://localhost/$app',
       'fpad': false,
-      'capabilities': 15.0,
-      'audioCodecs': 4071.0,
-      'videoCodecs': 252.0,
-      'videoFunction': 1.0,
+      'capabilities': 15.0, // Should also be constants if possible
+      'audioCodecs':
+          (RtmpConstants.supportSndAac |
+                  RtmpConstants.supportSndSpeex |
+                  RtmpConstants.supportSndNelly16 |
+                  RtmpConstants.supportSndNelly |
+                  RtmpConstants.supportSndMp3 |
+                  RtmpConstants.supportSndAdpcm |
+                  RtmpConstants.supportSndNone |
+                  RtmpConstants.supportSndG711a |
+                  RtmpConstants.supportSndG711u)
+              .toDouble(),
+      'videoCodecs':
+          (RtmpConstants.supportVidH264 |
+                  RtmpConstants.supportVidVp6alpha |
+                  RtmpConstants.supportVidVp6 |
+                  RtmpConstants.supportVidHomebrewv |
+                  RtmpConstants.supportVidHomebrew |
+                  RtmpConstants.supportVidSorenson)
+              .toDouble(),
+      'videoFunction': RtmpConstants.supportVidClientSeek.toDouble(),
     };
     return _sendCommand('connect', [args]);
   }
