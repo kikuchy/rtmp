@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:rtmp/rtmp.dart';
 import 'package:rtmp/src/utils/mp4_parser.dart';
@@ -29,8 +30,10 @@ void main(List<String> args) async {
     final parser = Mp4Parser(raf);
 
     print('Parsing MP4...');
-    final track = await parser.findH264Track();
-    if (track == null) {
+    final videoTrack = await parser.findH264Track();
+    final audioTrack = await parser.findAACTrack();
+
+    if (videoTrack == null) {
       print('Error: No H.264 track found in MP4 file.');
       await raf.close();
       return;
@@ -49,14 +52,34 @@ void main(List<String> args) async {
     print('Publishing with key: $streamKey...');
     await stream.publish(streamKey);
 
-    // 1. Send Sequence Header (SPS/PPS)
-    print('Sending AVC sequence header...');
-    stream.sendH264SequenceHeader(track.avcC);
+    // 1. Send Sequence Headers
+    print('Sending sequence headers...');
+    stream.sendH264SequenceHeader(videoTrack.avcC);
+    if (audioTrack != null) {
+      try {
+        stream.sendAACSequenceHeader(audioTrack.aacConfig);
+      } catch (e) {
+        print('Warning: Could not extract AAC config: $e');
+      }
+    }
 
-    // 2. Send Samples
-    print('Extracting samples...');
-    final samples = await track.getSamples();
-    print('Found ${samples.length} samples. Starting stream...');
+    // 2. Prepare Samples
+    print('Extracting samples and durations...');
+    final videoSamples = await videoTrack.getSamples();
+    final videoDurations = await videoTrack.getSampleDurations();
+    final videoTimescale = videoTrack.timescale;
+
+    final audioSamples = audioTrack != null
+        ? await audioTrack.getSamples()
+        : <Uint8List>[];
+    final audioDurations = audioTrack != null
+        ? await audioTrack.getSampleDurations()
+        : <int>[];
+    final audioTimescale = audioTrack != null ? audioTrack.timescale : 1;
+
+    print(
+      'Found ${videoSamples.length} video samples and ${audioSamples.length} audio samples.',
+    );
 
     // 3. Send Metadata
     stream.sendMetadata({
@@ -64,27 +87,62 @@ void main(List<String> args) async {
       'width': 1280.0,
       'height': 720.0,
       'framerate': 30.0,
+      if (audioTrack != null) 'audiocodecid': 10.0, // AAC
     });
 
-    int timestamp = 0;
-    const frameInterval = 33; // ~30 fps
+    // 4. Interleave and Stream
+    final allSamples = <_Sample>[];
 
+    int videoTs = 0;
+    for (var i = 0; i < videoSamples.length; i++) {
+      allSamples.add(
+        _Sample(videoSamples[i], (videoTs * 1000) ~/ videoTimescale, true),
+      );
+      videoTs += (i < videoDurations.length) ? videoDurations[i] : 0;
+    }
+
+    if (audioTrack != null) {
+      int audioTs = 0;
+      for (var i = 0; i < audioSamples.length; i++) {
+        allSamples.add(
+          _Sample(audioSamples[i], (audioTs * 1000) ~/ audioTimescale, false),
+        );
+        audioTs += (i < audioDurations.length) ? audioDurations[i] : 0;
+      }
+    }
+
+    allSamples.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    print('Starting interleaved stream with accurate timestamps...');
+    final stopwatch = Stopwatch()..start();
+    int lastTimestamp = 0;
     try {
-      for (var i = 0; i < samples.length; i++) {
-        final sample = samples[i];
-
-        // NALU type is at sample[4] in AVCC format (4 bytes length + 1 byte type)
-        final naluType = sample[4] & 0x1F;
-        final isKey = naluType == 5 || naluType == 7 || naluType == 8;
-
-        stream.sendH264Sample(sample, timestamp, isKeyframe: isKey);
-
-        if (i % 30 == 0) {
-          print('Sent $i samples... (timestamp: $timestamp ms)');
+      for (var sample in allSamples) {
+        // Wait until it's time to send this sample
+        final wallClockTime = stopwatch.elapsedMilliseconds;
+        final waitTime = sample.timestamp - wallClockTime;
+        if (waitTime > 0) {
+          await Future.delayed(Duration(milliseconds: waitTime));
         }
 
-        timestamp += frameInterval;
-        await Future.delayed(const Duration(milliseconds: frameInterval));
+        if (sample.isVideo) {
+          final naluType = sample.data[4] & 0x1F;
+          final isKey = naluType == 5 || naluType == 7 || naluType == 8;
+          stream.sendH264Sample(
+            sample.data,
+            sample.timestamp,
+            isKeyframe: isKey,
+          );
+        } else {
+          stream.sendAACSample(sample.data, sample.timestamp);
+        }
+
+        if (sample.isVideo &&
+            lastTimestamp ~/ 1000 != sample.timestamp ~/ 1000) {
+          print('Streaming... (timestamp: ${sample.timestamp} ms)');
+        }
+
+        lastTimestamp = sample.timestamp;
       }
     } on SocketException catch (e) {
       print('Socket error during streaming: ${e.message}');
@@ -97,4 +155,12 @@ void main(List<String> args) async {
     print('Error: $e');
     print(stack);
   }
+}
+
+class _Sample {
+  final Uint8List data;
+  final int timestamp;
+  final bool isVideo;
+
+  _Sample(this.data, this.timestamp, this.isVideo);
 }

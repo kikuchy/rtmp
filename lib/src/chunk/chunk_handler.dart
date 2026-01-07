@@ -164,15 +164,22 @@ class ChunkHandler {
       context.lastMessageStreamId = streamId;
 
       if (incomplete.bytesReceived == length) {
-        messages.add(
-          RtmpMessage(
-            chunkStreamId: csid,
-            type: RtmpMessageType.fromInt(typeId),
-            messageStreamId: streamId,
-            timestamp: timestamp,
-            payload: incomplete.payload,
-          ),
+        final message = RtmpMessage(
+          chunkStreamId: csid,
+          type: RtmpMessageType.fromInt(typeId),
+          messageStreamId: streamId,
+          timestamp: timestamp,
+          payload: incomplete.payload,
         );
+        messages.add(message);
+
+        // Handle setChunkSize immediately to affect subsequent chunks in the same data batch
+        if (message.type == RtmpMessageType.setChunkSize &&
+            message.payload.length >= 4) {
+          inChunkSize = _readUint32(message.payload, 0);
+          print('ChunkHandler: Updated inChunkSize to $inChunkSize');
+        }
+
         _incompleteMessages[csid] = IncompleteMessage(); // Reset
       }
     }

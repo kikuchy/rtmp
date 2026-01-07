@@ -84,12 +84,12 @@ class RtmpClient {
     await Handshake.perform(
       _socket,
       reader,
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 15));
 
     // 4. Connect Command
     await _protocol
         .connect(app, tcUrl: tcUrl)
-        .timeout(const Duration(seconds: 5));
+        .timeout(const Duration(seconds: 15));
 
     // 5. Initial Control Messages (Optional, sent after connect)
     _protocol.setChunkSize(4096);
@@ -158,10 +158,33 @@ class RtmpStream {
     sendVideo(payload.toBytes(), timestamp);
   }
 
+  /// Sends AAC AudioSpecificConfig.
+  void sendAACSequenceHeader(Uint8List config) {
+    final payload = BytesBuilder();
+    // AudioTagHeader:
+    // Format 10 (AAC) << 4 | Rate 3 (44kHz) << 2 | Size 1 (16 bit) << 1 | Type 1 (Stereo)
+    // 0xAF is the standard for AAC
+    payload.addByte(0xAF);
+    payload.addByte(0x00); // AACPacketType (0: sequence header)
+    payload.add(config);
+
+    sendAudio(payload.toBytes(), 0);
+  }
+
+  /// Sends AAC NALU sample.
+  void sendAACSample(Uint8List data, int timestamp) {
+    final payload = BytesBuilder();
+    payload.addByte(0xAF);
+    payload.addByte(0x01); // AACPacketType (1: raw)
+    payload.add(data);
+
+    sendAudio(payload.toBytes(), timestamp);
+  }
+
   /// Sends an audio data packet.
   void sendAudio(Uint8List data, int timestamp) {
     _protocol.sendMessage(
-      chunkStreamId: 4, // Audio some times uses same, or CSID 5
+      chunkStreamId: 4,
       type: RtmpMessageType.audioMessage,
       messageStreamId: streamId,
       timestamp: timestamp,
