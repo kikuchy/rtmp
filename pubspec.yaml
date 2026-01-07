@@ -4,11 +4,11 @@ version: 0.0.1
 repository: https://github.com/kikuchy/rtmp
 
 platforms:
-  - windows
-  - linux
-  - macos
-  - android
-  - ios
+  android:
+  ios:
+  linux:
+  macos:
+  windows:
 
 environment:
   sdk: ^3.10.4
