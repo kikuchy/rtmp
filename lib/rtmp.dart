@@ -1,6 +1,7 @@
-/// Support for doing something awesome.
+/// A pure Dart implementation of the Real-Time Messaging Protocol (RTMP).
 ///
-/// More dartdocs go here.
+/// This package provides an [RtmpClient] that can be used to connect to RTMP
+/// servers for both publishing and receiving media streams.
 library;
 
 export 'src/rtmp_client.dart';

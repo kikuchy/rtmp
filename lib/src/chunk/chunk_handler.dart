@@ -85,12 +85,13 @@ class ChunkHandler {
       int chunkHeaderSize = 0;
       if (fmt == 0) {
         chunkHeaderSize = 11;
-      } else if (fmt == 1)
+      } else if (fmt == 1) {
         chunkHeaderSize = 7;
-      else if (fmt == 2)
+      } else if (fmt == 2) {
         chunkHeaderSize = 3;
-      else if (fmt == 3)
+      } else if (fmt == 3) {
         chunkHeaderSize = 0;
+      }
 
       if (_inBuffer.length < headerSize + chunkHeaderSize) break;
 

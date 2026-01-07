@@ -1,39 +1,78 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# rtmp
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+A pure Dart library for RTMP (Real-Time Messaging Protocol).
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- **Pure Dart**: Implementation is entirely in Dart, ensuring cross-platform compatibility.
+- **Zero Dependencies**: No external package dependencies.
+- **Publishing & Receiving**: Supports both publishing to an RTMP server and receiving a stream from one.
+- **Cross-Platform**: Works on Flutter, Dart CLI, and any other Dart-supported environment.
+- **H.264 & AAC Support**: Basic support for common video and audio codecs.
+
+> [!IMPORTANT]
+> This package is an RTMP client. It does **not** include RTMP server functionality.
+
+### Screenshot
+
+YouTube Live from [rtmp_publishing_example.dart](https://github.com/kikuchy/rtmp/blob/main/example/rtmp_publishing_example.dart)
+
+![Screenshot](docs/assets/screenshot.png)
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add `rtmp` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  rtmp: ^0.0.1
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+### Publishing a Stream
 
 ```dart
-const like = 'sample';
+import 'package:rtmp/rtmp.dart';
+
+void main() async {
+  final client = RtmpClient();
+  await client.connect('rtmp://your-server-url/live');
+  
+  final stream = await client.createStream();
+  await stream.publish('stream-key');
+  
+  // Send data...
+  // stream.sendH264Sample(data, timestamp);
+  
+  await stream.close();
+  await client.close();
+}
+```
+
+### Receiving a Stream
+
+```dart
+import 'package:rtmp/rtmp.dart';
+
+void main() async {
+  final client = RtmpClient();
+  await client.connect('rtmp://your-server-url/live');
+  
+  final stream = await client.createStream();
+  await stream.play('stream-key');
+  
+  stream.videoStream.listen((packet) {
+    print('Received video packet: ${packet.timestamp}');
+  });
+  
+  // Wait or handle signals...
+}
 ```
 
 ## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+For more detailed examples, check the `example/` directory in the repository.
+
+- [rtmp_publishing_example.dart](https://github.com/kikuchy/rtmp/blob/main/example/rtmp_publishing_example.dart)
+- [rtmp_receiving_example.dart](https://github.com/kikuchy/rtmp/blob/main/example/rtmp_receiving_example.dart)
