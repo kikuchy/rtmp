@@ -14,7 +14,12 @@ class RtmpClient {
 
   final _messageController = StreamController<void>();
 
-  Future<void> connect(String url, {bool viaProxy = false}) async {
+  Future<void> connect(
+    String url, {
+    bool viaProxy = false,
+    Set<RtmpAudioCodec> audioCodecs = const {RtmpAudioCodec.all},
+    Set<RtmpVideoCodec> videoCodecs = const {RtmpVideoCodec.all},
+  }) async {
     final uri = Uri.parse(url);
     if (uri.scheme != 'rtmp' && uri.scheme != 'rtmps') {
       throw ArgumentError(
@@ -89,7 +94,13 @@ class RtmpClient {
 
     // 4. Connect Command
     await _protocol
-        .connect(app, tcUrl: tcUrl, viaProxy: viaProxy)
+        .connect(
+          app,
+          tcUrl: tcUrl,
+          viaProxy: viaProxy,
+          audioCodecs: audioCodecs,
+          videoCodecs: videoCodecs,
+        )
         .timeout(const Duration(seconds: 15));
 
     // 5. Initial Control Messages (Optional, sent after connect)

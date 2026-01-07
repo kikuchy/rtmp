@@ -6,6 +6,88 @@ import '../utils/constants.dart';
 import '../chunk/chunk_handler.dart';
 import '../chunk/models.dart';
 
+/// Audio codecs supported by the RTMP client, used in the 'connect' command.
+enum RtmpAudioCodec {
+  /// Raw sound, no compression
+  none(0x0001),
+
+  /// ADPCM compression
+  adpcm(0x0002),
+
+  /// mp3 compression
+  mp3(0x0004),
+
+  /// Not used
+  @Deprecated('Not used')
+  intel(0x0008),
+
+  /// Not used
+  @Deprecated('Not used')
+  unused(0x0010),
+
+  /// NellyMoser at 8-kHz compression
+  nelly8(0x0020),
+
+  /// NellyMoser compression (5, 11, 22, and 44 kHz)
+  nelly(0x0040),
+
+  /// G711A sound compression (Flash Media Server only)
+  g711a(0x0080),
+
+  /// G711U sound compression (Flash Media Server only)
+  g711u(0x0100),
+
+  /// NellyMouser at 16-kHz compression
+  nelly16(0x0200),
+
+  /// Advanced audio coding (AAC) codec
+  aac(0x0400),
+
+  /// Speex Audio
+  speex(0x0800),
+
+  /// All RTMP-supported audio codecs
+  all(0x0FFF);
+
+  final int flag;
+  const RtmpAudioCodec(this.flag);
+}
+
+/// Video codecs supported by the RTMP client, used in the 'connect' command.
+enum RtmpVideoCodec {
+  /// Obsolete value
+  @Deprecated('Obsolete value')
+  unused(0x0001),
+
+  /// Obsolete value
+  @Deprecated('Obsolete value')
+  jpeg(0x0002),
+
+  /// Sorenson Flash video
+  sorenson(0x0004),
+
+  /// V1 screen sharing
+  homebrew(0x0008),
+
+  /// On2 video (Flash 8+)
+  vp6(0x0010),
+
+  /// On2 video with alpha channel (Flash 8+)
+  vp6Alpha(0x0020),
+
+  /// Screen sharing version 2 (Flash 8+)
+  homebrewV(0x0040),
+
+  /// H264 video
+  h264(0x0080),
+
+  /// All RTMP-supported video codecs
+  all(0x0FFF);
+
+  final int flag;
+  const RtmpVideoCodec(this.flag);
+}
+
 class RtmpProtocol {
   final ChunkHandler chunkHandler;
   final void Function(Uint8List) onSend;
@@ -16,32 +98,27 @@ class RtmpProtocol {
   RtmpProtocol({required this.chunkHandler, required this.onSend});
 
   /// Sends a 'connect' command.
-  Future<dynamic> connect(String app, {String? tcUrl, bool viaProxy = false}) {
+  Future<dynamic> connect(
+    String app, {
+    String? tcUrl,
+    bool viaProxy = false,
+    Set<RtmpAudioCodec> audioCodecs = const {RtmpAudioCodec.all},
+    Set<RtmpVideoCodec> videoCodecs = const {RtmpVideoCodec.all},
+  }) {
     final args = {
       'app': app,
       'flashVer':
           'FMLE/3.0 (compatible; Dart/${Platform.version.split(' ').first})',
       'tcUrl': tcUrl ?? 'rtmp://localhost/$app',
       'fpad': viaProxy,
-      'audioCodecs':
-          (RtmpConstants.supportSndAac |
-                  RtmpConstants.supportSndSpeex |
-                  RtmpConstants.supportSndNelly16 |
-                  RtmpConstants.supportSndNelly |
-                  RtmpConstants.supportSndMp3 |
-                  RtmpConstants.supportSndAdpcm |
-                  RtmpConstants.supportSndNone |
-                  RtmpConstants.supportSndG711a |
-                  RtmpConstants.supportSndG711u)
-              .toDouble(),
-      'videoCodecs':
-          (RtmpConstants.supportVidH264 |
-                  RtmpConstants.supportVidVp6alpha |
-                  RtmpConstants.supportVidVp6 |
-                  RtmpConstants.supportVidHomebrewv |
-                  RtmpConstants.supportVidHomebrew |
-                  RtmpConstants.supportVidSorenson)
-              .toDouble(),
+      'audioCodecs': (audioCodecs.fold(
+        0,
+        (previousValue, element) => previousValue | element.flag,
+      )).toDouble(),
+      'videoCodecs': (videoCodecs.fold(
+        0,
+        (previousValue, element) => previousValue | element.flag,
+      )).toDouble(),
       'videoFunction': RtmpConstants.supportVidClientSeek.toDouble(),
     };
     return _sendCommand('connect', [args]);

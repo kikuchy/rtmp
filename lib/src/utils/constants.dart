@@ -1,31 +1,5 @@
 /// RTMP Mixed Constants
 class RtmpConstants {
-  // Codec Flag Values for audioCodecs property
-  static const int supportSndNone = 0x0001;
-  static const int supportSndAdpcm = 0x0002;
-  static const int supportSndMp3 = 0x0004;
-  static const int supportSndIntel = 0x0008;
-  static const int supportSndUnused = 0x0010;
-  static const int supportSndNelly8 = 0x0020;
-  static const int supportSndNelly = 0x0040;
-  static const int supportSndG711a = 0x0080;
-  static const int supportSndG711u = 0x0100;
-  static const int supportSndNelly16 = 0x0200;
-  static const int supportSndAac = 0x0400;
-  static const int supportSndSpeex = 0x0800;
-  static const int supportSndAll = 0x0FFF;
-
-  // Codec Flag Values for videoCodecs property
-  static const int supportVidUnused = 0x0001;
-  static const int supportVidJpeg = 0x0002;
-  static const int supportVidSorenson = 0x0004;
-  static const int supportVidHomebrew = 0x0008;
-  static const int supportVidVp6 = 0x0010;
-  static const int supportVidVp6alpha = 0x0020;
-  static const int supportVidHomebrewv = 0x0040;
-  static const int supportVidH264 = 0x0080;
-  static const int supportVidAll = 0x00FF;
-
   // Function Flag Values for videoFunction property
   static const int supportVidClientSeek = 1;
 
