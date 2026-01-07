@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import '../amf/amf.dart';
 import '../utils/constants.dart';
@@ -15,13 +16,13 @@ class RtmpProtocol {
   RtmpProtocol({required this.chunkHandler, required this.onSend});
 
   /// Sends a 'connect' command.
-  Future<dynamic> connect(String app, {String? tcUrl}) {
+  Future<dynamic> connect(String app, {String? tcUrl, bool viaProxy = false}) {
     final args = {
       'app': app,
-      'flashVer': 'FMLE/3.0 (compatible; Antigravity)',
+      'flashVer':
+          'FMLE/3.0 (compatible; Dart/${Platform.version.split(' ').first})',
       'tcUrl': tcUrl ?? 'rtmp://localhost/$app',
-      'fpad': false,
-      'capabilities': 15.0, // Should also be constants if possible
+      'fpad': viaProxy,
       'audioCodecs':
           (RtmpConstants.supportSndAac |
                   RtmpConstants.supportSndSpeex |
