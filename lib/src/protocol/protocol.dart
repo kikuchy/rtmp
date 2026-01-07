@@ -94,8 +94,17 @@ class RtmpProtocol {
 
   int _transactionIdCounter = 1;
   final Map<int, Completer<dynamic>> _pendingCommands = {};
+  final Map<int, void Function(RtmpMessage)> _streamHandlers = {};
 
   RtmpProtocol({required this.chunkHandler, required this.onSend});
+
+  void registerStreamHandler(int streamId, void Function(RtmpMessage) handler) {
+    _streamHandlers[streamId] = handler;
+  }
+
+  void unregisterStreamHandler(int streamId) {
+    _streamHandlers.remove(streamId);
+  }
 
   /// Sends a 'connect' command.
   Future<dynamic> connect(
@@ -180,6 +189,17 @@ class RtmpProtocol {
     );
   }
 
+  /// Sends a 'play' command.
+  void play(int streamId, String streamName) {
+    sendMessage(
+      chunkStreamId: 3,
+      type: RtmpMessageType.commandMessageAmf0,
+      messageStreamId: streamId,
+      timestamp: 0,
+      payload: encodeAmf(['play', 0.0, null, streamName]),
+    );
+  }
+
   void handleMessage(RtmpMessage message) {
     switch (message.type) {
       case RtmpMessageType.commandMessageAmf0:
@@ -203,6 +223,14 @@ class RtmpProtocol {
         break;
       case RtmpMessageType.userControlMessage:
         _handleUserControl(message.payload);
+        break;
+      case RtmpMessageType.audioMessage:
+      case RtmpMessageType.videoMessage:
+      case RtmpMessageType.dataMessageAmf0:
+        final handler = _streamHandlers[message.messageStreamId];
+        if (handler != null) {
+          handler(message);
+        }
         break;
       default:
         // Already logged the type in RtmpClient

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'handshake/handshake.dart';
+import 'amf/amf.dart';
 import 'chunk/chunk_handler.dart';
 import 'chunk/models.dart';
 import 'package:rtmp/src/utils/constants.dart';
@@ -122,11 +123,54 @@ class RtmpStream {
   final int streamId;
   final RtmpProtocol _protocol;
 
-  RtmpStream(this.streamId, this._protocol);
+  final _videoController = StreamController<RtmpMediaPacket>.broadcast();
+  final _audioController = StreamController<RtmpMediaPacket>.broadcast();
+  final _metadataController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  RtmpStream(this.streamId, this._protocol) {
+    _protocol.registerStreamHandler(streamId, _onMessage);
+  }
+
+  Stream<RtmpMediaPacket> get videoStream => _videoController.stream;
+  Stream<RtmpMediaPacket> get audioStream => _audioController.stream;
+  Stream<Map<String, dynamic>> get metadataStream => _metadataController.stream;
+
+  void _onMessage(RtmpMessage message) {
+    switch (message.type) {
+      case RtmpMessageType.videoMessage:
+        _videoController.add(
+          RtmpMediaPacket(message.payload, message.timestamp),
+        );
+        break;
+      case RtmpMessageType.audioMessage:
+        _audioController.add(
+          RtmpMediaPacket(message.payload, message.timestamp),
+        );
+        break;
+      case RtmpMessageType.dataMessageAmf0:
+        final decoder = Amf0Decoder(message.payload);
+        final name = decoder.decode();
+        if (name == 'onMetaData' && decoder.hasMore) {
+          final metadata = decoder.decode();
+          if (metadata is Map<String, dynamic>) {
+            _metadataController.add(metadata);
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
 
   /// Starts publishing a stream with the given [streamKey].
   Future<void> publish(String streamKey) async {
     _protocol.publish(streamId, streamKey, 'live');
+  }
+
+  /// Starts playing a stream with the given [streamKey].
+  Future<void> play(String streamKey) async {
+    _protocol.play(streamId, streamKey);
   }
 
   /// Sends a video data packet.
@@ -229,4 +273,19 @@ class RtmpStream {
       payload: _protocol.encodeAmf(['@setDataFrame', 'onMetaData', metadata]),
     );
   }
+
+  Future<void> close() async {
+    _protocol.unregisterStreamHandler(streamId);
+    await _videoController.close();
+    await _audioController.close();
+    await _metadataController.close();
+  }
+}
+
+/// A media packet received from an RTMP stream.
+class RtmpMediaPacket {
+  final Uint8List data;
+  final int timestamp;
+
+  RtmpMediaPacket(this.data, this.timestamp);
 }
