@@ -8,6 +8,10 @@ import 'chunk/models.dart';
 import 'package:rtmp/src/utils/constants.dart';
 import 'protocol/protocol.dart';
 
+/// A client that implements the Real-Time Messaging Protocol (RTMP).
+///
+/// This client supports both publishing and receiving streams.
+/// It works for both `rtmp://` and `rtmps://` (secure) connections.
 class RtmpClient {
   late Socket _socket;
   late ChunkHandler _chunkHandler;
@@ -15,6 +19,12 @@ class RtmpClient {
 
   final _messageController = StreamController<void>();
 
+  /// Connects to an RTMP/RTMPS server.
+  ///
+  /// [url] should be in the format `rtmp://host:port/app` or `rtmps://host:port/app`.
+  /// [viaProxy] indicates whether the connection is through a proxy (fpAd).
+  /// [audioCodecs] and [videoCodecs] specify the supported codecs for this connection.
+  /// [ignoreCertificateErrors] can be set to true for RTMPS connections with self-signed certificates.
   Future<void> connect(
     String url, {
     bool viaProxy = false,
@@ -113,18 +123,26 @@ class RtmpClient {
     _protocol.setChunkSize(4096);
   }
 
+  /// Creates a new RTMP stream within the current connection.
+  ///
+  /// Returns an [RtmpStream] that can be used to [RtmpStream.publish] or [RtmpStream.play].
   Future<RtmpStream> createStream() async {
     final streamId = await _protocol.createStream();
     return RtmpStream(streamId, _protocol);
   }
 
+  /// Closes the connection and all associated streams.
   Future<void> close() async {
     await _socket.close();
     await _messageController.close();
   }
 }
 
+/// Represents a single RTMP stream within a connection.
+///
+/// Use [RtmpClient.createStream] to create an instance of this class.
 class RtmpStream {
+  /// The unique ID of this stream.
   final int streamId;
   final RtmpProtocol _protocol;
 
@@ -137,8 +155,13 @@ class RtmpStream {
     _protocol.registerStreamHandler(streamId, _onMessage);
   }
 
+  /// A stream of video packets received from the server.
   Stream<RtmpMediaPacket> get videoStream => _videoController.stream;
+
+  /// A stream of audio packets received from the server.
   Stream<RtmpMediaPacket> get audioStream => _audioController.stream;
+
+  /// A stream of metadata maps received from the server (e.g., onMetaData).
   Stream<Map<String, dynamic>> get metadataStream => _metadataController.stream;
 
   void _onMessage(RtmpMessage message) {
@@ -178,7 +201,9 @@ class RtmpStream {
     _protocol.play(streamId, streamKey);
   }
 
-  /// Sends a video data packet.
+  /// Sends a raw video data packet.
+  ///
+  /// For H.264, usually you should use [sendH264SequenceHeader] and [sendH264Sample] instead.
   void sendVideo(Uint8List data, int timestamp) {
     _protocol.sendMessage(
       chunkStreamId: 4,
@@ -279,6 +304,7 @@ class RtmpStream {
     );
   }
 
+  /// Closes the stream.
   Future<void> close() async {
     _protocol.unregisterStreamHandler(streamId);
     await _videoController.close();
@@ -287,9 +313,12 @@ class RtmpStream {
   }
 }
 
-/// A media packet received from an RTMP stream.
+/// A media packet received from or sent to an RTMP stream.
 class RtmpMediaPacket {
+  /// The raw payload of the media packet.
   final Uint8List data;
+
+  /// The timestamp of the packet in milliseconds.
   final int timestamp;
 
   RtmpMediaPacket(this.data, this.timestamp);

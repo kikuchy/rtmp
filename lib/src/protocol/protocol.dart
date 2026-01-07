@@ -6,7 +6,9 @@ import '../utils/constants.dart';
 import '../chunk/chunk_handler.dart';
 import '../chunk/models.dart';
 
-/// Audio codecs supported by the RTMP client, used in the 'connect' command.
+/// Audio codecs supported by the RTMP client.
+///
+/// These values are used to specify supported audio formats during connection.
 enum RtmpAudioCodec {
   /// Raw sound, no compression
   none(0x0001),
@@ -49,11 +51,14 @@ enum RtmpAudioCodec {
   /// All RTMP-supported audio codecs
   all(0x0FFF);
 
+  /// The flag value associated with the codec.
   final int flag;
   const RtmpAudioCodec(this.flag);
 }
 
-/// Video codecs supported by the RTMP client, used in the 'connect' command.
+/// Video codecs supported by the RTMP client.
+///
+/// These values are used to specify supported video formats during connection.
 enum RtmpVideoCodec {
   /// Obsolete value
   @Deprecated('Obsolete value')
@@ -84,6 +89,7 @@ enum RtmpVideoCodec {
   /// All RTMP-supported video codecs
   all(0x0FFF);
 
+  /// The flag value associated with the codec.
   final int flag;
   const RtmpVideoCodec(this.flag);
 }
