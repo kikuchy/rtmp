@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:rtmp/rtmp.dart';
-import 'package:rtmp/src/utils/mp4_parser.dart';
+import 'mp4_parser.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {

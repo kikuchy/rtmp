@@ -1,6 +1,12 @@
 import 'dart:typed_data';
 import 'dart:io';
-import 'package:rtmp/src/utils/constants.dart';
+
+/// MP4 Descriptor Tags used for AAC configuration parsing.
+class Mp4DescriptorTags {
+  static const int esDescriptor = 0x03;
+  static const int decoderConfigDescriptor = 0x04;
+  static const int decoderSpecificInfo = 0x05;
+}
 
 class Mp4Parser {
   final RandomAccessFile _file;

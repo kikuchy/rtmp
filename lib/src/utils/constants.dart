@@ -45,10 +45,3 @@ class RtmpConstants {
   static const int avcPacketTypeNalu = 1;
   static const int avcPacketTypeEndOfSequence = 2;
 }
-
-/// MP4 Descriptor Tags
-class Mp4DescriptorTags {
-  static const int esDescriptor = 0x03;
-  static const int decoderConfigDescriptor = 0x04;
-  static const int decoderSpecificInfo = 0x05;
-}
