@@ -40,7 +40,9 @@ void main(List<String> args) async {
     }
 
     print('Connecting to $url...');
-    await client.connect(url).timeout(const Duration(seconds: 10));
+    await client
+        .connect(url, ignoreCertificateErrors: true)
+        .timeout(const Duration(seconds: 10));
 
     print('Creating stream...');
     final stream = await client.createStream();

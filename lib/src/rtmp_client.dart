@@ -20,6 +20,7 @@ class RtmpClient {
     bool viaProxy = false,
     Set<RtmpAudioCodec> audioCodecs = const {RtmpAudioCodec.all},
     Set<RtmpVideoCodec> videoCodecs = const {RtmpVideoCodec.all},
+    bool ignoreCertificateErrors = false,
   }) async {
     final uri = Uri.parse(url);
     if (uri.scheme != 'rtmp' && uri.scheme != 'rtmps') {
@@ -29,13 +30,17 @@ class RtmpClient {
     }
 
     final host = uri.host;
-    final port = uri.port == 0 ? 1935 : uri.port;
-    final app = uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : '';
     final isSecure = uri.scheme == 'rtmps';
+    final port = uri.port != 0 ? uri.port : (isSecure ? 443 : 1935);
+    final app = uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : '';
 
     // 1. Prepare broadcast stream for shared listening
     final socket = isSecure
-        ? await SecureSocket.connect(host, port)
+        ? await SecureSocket.connect(
+            host,
+            port,
+            onBadCertificate: ignoreCertificateErrors ? (cert) => true : null,
+          )
         : await Socket.connect(host, port);
     _socket = socket;
 
