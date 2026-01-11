@@ -23,6 +23,7 @@ void main(List<String> args) async {
   }
 
   final client = RtmpClient();
+  StreamSubscription<RtmpFlowControlEvent>? flowControlSubscription;
 
   try {
     print('Opening file: $filePath');
@@ -43,6 +44,33 @@ void main(List<String> args) async {
     await client
         .connect(url, ignoreCertificateErrors: true)
         .timeout(const Duration(seconds: 10));
+
+    int currentChunkSize = 4096;
+    int? lastAcknowledgedBytes;
+    flowControlSubscription = client.flowControlStream.listen((event) {
+      if (event is RtmpAcknowledgement) {
+        if (lastAcknowledgedBytes != null) {
+          final delta = event.bytesAcknowledged - lastAcknowledgedBytes!;
+          if (delta > 0) {
+            int targetSize = currentChunkSize;
+            if (delta >= 1024 * 1024) {
+              targetSize = 4096;
+            } else if (delta <= 256 * 1024) {
+              targetSize = 1024;
+            }
+
+            if (targetSize != currentChunkSize) {
+              currentChunkSize = targetSize;
+              client.setChunkSize(currentChunkSize);
+              print(
+                'Adjusted outgoing chunk size to $currentChunkSize based on acknowledgement.',
+              );
+            }
+          }
+        }
+        lastAcknowledgedBytes = event.bytesAcknowledged;
+      }
+    });
 
     print('Creating stream...');
     final stream = await client.createStream();
@@ -152,10 +180,12 @@ void main(List<String> args) async {
 
     print('Finished streaming all samples.');
     await raf.close();
+    await flowControlSubscription?.cancel();
     await client.close();
   } catch (e, stack) {
     print('Error: $e');
     print(stack);
+    await flowControlSubscription?.cancel();
   }
 }
 

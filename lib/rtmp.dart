@@ -6,3 +6,4 @@ library;
 
 export 'src/rtmp_client.dart';
 export 'src/protocol/protocol.dart' show RtmpAudioCodec, RtmpVideoCodec;
+export 'src/flow_control.dart';

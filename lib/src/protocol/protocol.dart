@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import '../flow_control.dart';
 import '../amf/amf.dart';
 import '../utils/constants.dart';
 import '../chunk/chunk_handler.dart';
@@ -97,12 +98,17 @@ enum RtmpVideoCodec {
 class RtmpProtocol {
   final ChunkHandler chunkHandler;
   final void Function(Uint8List) onSend;
+  final void Function(RtmpFlowControlEvent event)? onFlowControl;
 
   int _transactionIdCounter = 1;
   final Map<int, Completer<dynamic>> _pendingCommands = {};
   final Map<int, void Function(RtmpMessage)> _streamHandlers = {};
 
-  RtmpProtocol({required this.chunkHandler, required this.onSend});
+  RtmpProtocol({
+    required this.chunkHandler,
+    required this.onSend,
+    this.onFlowControl,
+  });
 
   void registerStreamHandler(int streamId, void Function(RtmpMessage) handler) {
     _streamHandlers[streamId] = handler;
@@ -218,14 +224,26 @@ class RtmpProtocol {
         chunkHandler.inChunkSize = size;
         break;
       case RtmpMessageType.windowAcknowledgementSize:
-        final data = ByteData.sublistView(message.payload);
-        final size = data.getUint32(0, Endian.big);
-        print('Server set window ack size to: $size');
+        if (message.payload.length >= 4) {
+          final data = ByteData.sublistView(message.payload);
+          final size = data.getUint32(0, Endian.big);
+          onFlowControl?.call(RtmpWindowAcknowledgementSize(size));
+        }
+        break;
+      case RtmpMessageType.acknowledgement:
+        if (message.payload.length >= 4) {
+          final data = ByteData.sublistView(message.payload);
+          final size = data.getUint32(0, Endian.big);
+          onFlowControl?.call(RtmpAcknowledgement(size));
+        }
         break;
       case RtmpMessageType.setPeerBandwidth:
-        final data = ByteData.sublistView(message.payload);
-        final size = data.getUint32(0, Endian.big);
-        print('Server set peer bandwidth to: $size');
+        if (message.payload.length >= 4) {
+          final data = ByteData.sublistView(message.payload);
+          final size = data.getUint32(0, Endian.big);
+          final limitType = message.payload.length >= 5 ? data.getUint8(4) : 0;
+          onFlowControl?.call(RtmpPeerBandwidth(size, limitType));
+        }
         break;
       case RtmpMessageType.userControlMessage:
         _handleUserControl(message.payload);

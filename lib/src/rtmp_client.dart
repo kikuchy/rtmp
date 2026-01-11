@@ -5,6 +5,7 @@ import 'handshake/handshake.dart';
 import 'amf/amf.dart';
 import 'chunk/chunk_handler.dart';
 import 'chunk/models.dart';
+import 'flow_control.dart';
 import 'package:rtmp/src/utils/constants.dart';
 import 'protocol/protocol.dart';
 
@@ -18,6 +19,12 @@ class RtmpClient {
   late RtmpProtocol _protocol;
 
   final _messageController = StreamController<void>();
+  final _flowControlController =
+      StreamController<RtmpFlowControlEvent>.broadcast();
+
+  /// A stream of flow-control events from the server.
+  Stream<RtmpFlowControlEvent> get flowControlStream =>
+      _flowControlController.stream;
 
   /// Connects to an RTMP/RTMPS server.
   ///
@@ -68,6 +75,7 @@ class RtmpClient {
     _protocol = RtmpProtocol(
       chunkHandler: _chunkHandler,
       onSend: (data) => _socket.add(data),
+      onFlowControl: _flowControlController.add,
     );
 
     // tcUrl should be rtmp://host:port/app
@@ -140,6 +148,7 @@ class RtmpClient {
   Future<void> close() async {
     await _socket.close();
     await _messageController.close();
+    await _flowControlController.close();
   }
 }
 
