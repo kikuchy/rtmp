@@ -131,6 +131,11 @@ class RtmpClient {
     return RtmpStream(streamId, _protocol);
   }
 
+  /// Sets the outgoing chunk size.
+  void setChunkSize(int size) {
+    _protocol.setChunkSize(size);
+  }
+
   /// Closes the connection and all associated streams.
   Future<void> close() async {
     await _socket.close();
@@ -215,7 +220,7 @@ class RtmpStream {
   }
 
   /// Sends H.264 AVCDecoderConfigurationRecord (SPS/PPS).
-  void sendH264SequenceHeader(Uint8List avcC) {
+  void sendH264SequenceHeader(Uint8List avcC, {int timestamp = 0}) {
     final payload = BytesBuilder();
     payload.addByte(
       (RtmpConstants.flvVideoFrameTypeKeyframe << 4) |
@@ -227,7 +232,7 @@ class RtmpStream {
     payload.addByte(0x00);
     payload.add(avcC);
 
-    sendVideo(payload.toBytes(), 0);
+    sendVideo(payload.toBytes(), timestamp);
   }
 
   /// Sends H.264 NALU sample.
@@ -285,7 +290,7 @@ class RtmpStream {
   /// Sends an audio data packet.
   void sendAudio(Uint8List data, int timestamp) {
     _protocol.sendMessage(
-      chunkStreamId: 4,
+      chunkStreamId: 5,
       type: RtmpMessageType.audioMessage,
       messageStreamId: streamId,
       timestamp: timestamp,
